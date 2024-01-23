@@ -32,7 +32,7 @@ To get started with this project using Git Bash, follow these steps:
     ```bash
     .\venv\Scripts\activate
     ```
-    or Linux/Mac
+    or
     ```bash
     source .\venv\Scripts\activate
     ```

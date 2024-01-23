@@ -26,6 +26,16 @@ form {
     opacity: 1;
 }
 
+h4 {
+    color: #333;
+    font-size: 2rem !important;
+    font-weight: 800;
+}
+
+label {
+    font-weight: 700;
+}
+
 .btn-primary {
     width: 100%;
     border: none;
@@ -45,12 +55,6 @@ form {
     border-radius: 4px 4px 0 0;
 }
 
-h4 {
-    color: #333;
-    font-size: 2rem !important;
-    font-weight: 800;
-}
-
 .form-label {
     font-family: 'Poppins', sans-serif !important;
 }
@@ -60,6 +64,11 @@ h4 {
     pointer-events: none;
 }
 
-label {
-    font-weight: 700;
+.custom-alert {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85vmin;
+    z-index: 1000;
 }

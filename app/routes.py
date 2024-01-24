@@ -2,17 +2,21 @@ from app import app
 from flask import render_template, redirect, url_for, request, session, flash
 import mysql.connector
 from mysql.connector import Error
+from dotenv import load_dotenv
+import os
 
-app.secret_key = 'your_secret_key'
+load_dotenv()
+
+app.secret_key = os.getenv('YOUR_SECRET_KEY')
 connection = None
 
 def get_connection():
     try:
         connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="aayush",
-            database="test"
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_DATABASE')
         )
         return connection
     except Error as e:

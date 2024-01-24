@@ -12,6 +12,7 @@ To run this project, you will need the following dependencies:
 
 - Python 3.x
 - Flask
+- SQL-connector
 
 ## Getting Started
 
@@ -20,29 +21,34 @@ To get started with this project using Git Bash, follow these steps:
 1. Clone this repository:
     ```bash
     git clone https://github.com/aayushsoni4/Login-with-Authentication.git
+    ```
+
+2. Navigate to the repository:
+    ```bash
     cd Login-with-Authentication
     ```
 
-2. Create a virtual environment:
+3. Create a virtual environment:
     ```bash
     python -m venv venv
     ```
 
-3. Activate the virtual environment:
+4. Activate the virtual environment:
+- On Windows:
     ```bash
     .\venv\Scripts\activate
     ```
-    or
+- On macOS and Linux:
     ```bash
     source .\venv\Scripts\activate
     ```
 
-4. Install the required libraries:
+5. Install the required libraries:
     ```bash
     pip install -r requirements.txt
     ```
 
-5. Run the Flask app:
+6. Run the Flask app:
     ```bash
     python run.py
     ```

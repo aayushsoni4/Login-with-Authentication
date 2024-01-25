@@ -1,27 +1,50 @@
-from app import app
 from flask import render_template, redirect, url_for, request, session, flash
-import mysql.connector
-from mysql.connector import Error
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import os
 
+from app import app
+app.secret_key = os.getenv('YOUR_SECRET_KEY')
+
 load_dotenv()
 
-app.secret_key = os.getenv('YOUR_SECRET_KEY')
-connection = None
 
-def get_connection():
-    try:
-        connection = mysql.connector.connect(
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_DATABASE')
-        )
-        return connection
-    except Error as e:
-        print(f"Error: {e}")
-        return None
+engine = create_engine(
+    f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_DATABASE')}"
+)
+
+def add_user(username, email, password):
+    if len(username)==0 or len(password)==0:
+        return False
+    with engine.connect() as connection:
+        try:
+            query = text("INSERT INTO users (username, email, password) VALUES (:username, :email, :password)")
+            connection.execute(query, {"username": username, "email": email, "password": password})
+            connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding user: {str(e)}")
+            return False
+
+def get_user_by_credentials(email_or_name, password):
+    with engine.connect() as connection:
+        try:
+            query = text("SELECT * FROM users WHERE (email = :input AND password = :password) OR (username = :input AND password = :password)")
+            result = connection.execute(query, {"input": email_or_name, "password": password}).fetchall()
+            return result
+        except Exception as e:
+            print(f"Error retrieving user: {str(e)}")
+            return None
+
+def get_all_users():
+    with engine.connect() as connection:
+        try:
+            query = text("SELECT * FROM users")
+            result = connection.execute(query).fetchall()
+            return result
+        except Exception as e:
+            print(f"Error retrieving users: {str(e)}")
+            return None
 
 @app.route('/')
 def home():
@@ -34,23 +57,13 @@ def register():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        try:
-            connection = get_connection()
-            cursor = connection.cursor()
-
-            insert_query = "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)"
-            cursor.execute(insert_query, (username, email, password))
-            connection.commit()
-
-        except Error as e:
-            flash(f'Registration failed. Error: {str(e)}', 'error')
+        if add_user(username, email, password):
+            session['is_activated'] = True
+            return redirect(url_for('login'))
+        else:
+            flash('Registration failed.', 'error')
             return redirect(url_for('register'))
 
-        finally:
-            cursor.close()
-            connection.close()
-        session['is_activated'] = True
-        return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/login', methods=['POST', 'GET'])
@@ -59,48 +72,26 @@ def login():
         email_or_name = request.form.get('username')
         password = request.form.get('password')
 
-        try:
-            connection = get_connection()
-            cursor = connection.cursor()
-
-            select_query = "SELECT * FROM users WHERE (email = %s AND password = %s) OR (name = %s AND password = %s)"
-
-            cursor.execute(select_query, (email_or_name, password, email_or_name, password))
-            result = cursor.fetchall()
-
-        except Error as e:
-            flash(f'Login failed. Error: {str(e)}', 'error')
-            return redirect(url_for('home'))
-
-        finally:
-            cursor.close()
-            connection.close()
+        result = get_user_by_credentials(email_or_name, password)
 
         if result:
             session['username'] = result[0][1]
             session['email'] = result[0][2]
             session['password'] = result[0][3]
-            return redirect(url_for('main'))
-    is_activated = session.pop('is_activated',False)
+            return redirect(url_for('profile'))
+
+        flash('Login failed.', 'error')
+        return redirect(url_for('home'))
+
+    is_activated = session.pop('is_activated', False)
     return render_template('home.html', is_activated=is_activated)
 
 @app.route('/profile')
-def main():
-    try:
-        connection = get_connection()
-        cursor = connection.cursor()
+def profile():
+    result = get_all_users()
 
-        select_query = "SELECT * FROM users"
+    if result:
+        return render_template('profile.html', result=result)
 
-        cursor.execute(select_query)
-        result = cursor.fetchall()
-
-    except Error as e:
-        flash(f'Error retrieving profile data. Error: {str(e)}', 'error')
-        return redirect(url_for('home'))
-
-    finally:
-        cursor.close()
-        connection.close()
-
-    return render_template('profile.html', result=result)
+    flash('Enter valid Username and Password', 'error')
+    return redirect(url_for('home'))

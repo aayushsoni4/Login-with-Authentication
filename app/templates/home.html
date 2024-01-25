@@ -1,5 +1,16 @@
 {% include 'index.html' %}
 
 <div class="container-fluid">
+    {% include 'index.html' %}
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-success alert-dismissible fade show custom-alert" role="alert">
+        {% for message in messages %}
+        <p class="mb-0">{{ message }}</p>
+        {% endfor %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% endwith %}
     {% include 'login.html' %}
 </div>

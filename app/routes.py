@@ -1,5 +1,6 @@
 from flask import render_template, redirect, url_for, request, session, flash
 from sqlalchemy import create_engine, text
+import bcrypt
 from dotenv import load_dotenv
 import os
 
@@ -29,8 +30,13 @@ def add_user(username, email, password):
 def get_user_by_credentials(email_or_name, password):
     with engine.connect() as connection:
         try:
-            query = text("SELECT * FROM users WHERE (email = :input AND password = :password) OR (username = :input AND password = :password)")
-            result = connection.execute(query, {"input": email_or_name, "password": password}).fetchall()
+            query = text("SELECT * FROM users WHERE (email = :input) OR (username = :input)")
+            result = connection.execute(query, {"input": email_or_name}).fetchall()
+            if result:
+                if bcrypt.checkpw(password.encode('utf-8'), result[0][3].encode('utf-8')):
+                    return result
+                else:
+                    return None
             return result
         except Exception as e:
             print(f"Error retrieving user: {str(e)}")
@@ -56,8 +62,9 @@ def register():
         email = request.form.get('email')
         username = request.form.get('username')
         password = request.form.get('password')
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        if add_user(username, email, password):
+        if add_user(username, email, hashed_password):
             session['is_activated'] = True
             return redirect(url_for('login'))
         else:

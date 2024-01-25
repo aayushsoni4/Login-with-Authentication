@@ -11,7 +11,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: linear-gradient(18deg, rgba(34, 192, 195, 0.633) 37%, rgba(192, 100, 123, 0.601) 83%);
+    background: linear-gradient(18deg, rgba(0, 78, 167, 0.881) 37%, rgba(174, 0, 43, 0.601) 83%);
     font-family: 'Poppins', sans-serif;
 }
 
@@ -25,6 +25,8 @@ form {
     transition: opacity 0.5s ease-in-out;
     opacity: 1;
 }
+
+
 
 h4 {
     color: #333;
@@ -43,7 +45,7 @@ label {
     color: #000;
     box-shadow: 20px #000;
     box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.8);
-    background: linear-gradient(18deg, rgba(34, 192, 195, 0.462) 65%, rgb(215, 202, 206) 83%);
+    background: linear-gradient(28deg, rgba(0, 78, 167, 0.301) 57%, rgba(196, 2, 51, 0.718));
 }
 
 .form-control {

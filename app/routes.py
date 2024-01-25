@@ -1,21 +1,65 @@
+# Import necessary modules
 from flask import render_template, redirect, url_for, request, session, flash
 from sqlalchemy import create_engine, text
 import bcrypt
 from dotenv import load_dotenv
+import logging
 import os
 
+# Import the Flask app instance
 from app import app
+app.first_request_processed = False
+
+# Set the Flask app's secret key from environment variables
 app.secret_key = os.getenv('YOUR_SECRET_KEY')
 
+# Load environment variables from the .env file
 load_dotenv()
 
+# Configure Flask app with necessary environment variables
+app.config['SECRET_KEY'] = os.getenv('YOUR_SECRET_KEY')
+app.config['DB_USER'] = os.getenv('DB_USER')
+app.config['DB_PASSWORD'] = os.getenv('DB_PASSWORD')
+app.config['DB_HOST'] = os.getenv('DB_HOST')
+app.config['DB_PORT'] = os.getenv('DB_PORT')
+app.config['DB_DATABASE'] = os.getenv('DB_DATABASE')
 
-engine = create_engine(
-    f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_DATABASE')}"
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Create the SQLAlchemy engine using the configured database URI
+db_uri = f"mysql+mysqlconnector://{app.config['DB_USER']}:{app.config['DB_PASSWORD']}@{app.config['DB_HOST']}:{app.config['DB_PORT']}/{app.config['DB_DATABASE']}"
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+engine = create_engine(db_uri)
+
+# Function to create the 'users' table if it doesn't exist
+def create_table_if_not_exists():
+    with engine.connect() as connection:
+        try:
+            query = text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    is_activated TINYINT DEFAULT 0
+                );
+            """)
+            connection.execute(query)
+        except Exception as e:
+            # Log an error message if there's an issue creating the table
+            logger.error(f"Error creating table: {str(e)}")
+
+# Function to initialize the 'users' table
+def initialize_table():
+    if not app.first_request_processed:
+        create_table_if_not_exists()
+        app.first_request_processed = True
+
+# Function to add a new user to the 'users' table
 def add_user(username, email, password):
-    if len(username)==0 or len(password)==0:
+    if not username or not password:
         return False
     with engine.connect() as connection:
         try:
@@ -24,9 +68,11 @@ def add_user(username, email, password):
             connection.commit()
             return True
         except Exception as e:
-            print(f"Error adding user: {str(e)}")
+            # Log an error message if there's an issue adding a user
+            logger.error(f"Error adding user: {str(e)}")
             return False
 
+# Function to retrieve a user by credentials from the 'users' table
 def get_user_by_credentials(email_or_name, password):
     with engine.connect() as connection:
         try:
@@ -39,9 +85,11 @@ def get_user_by_credentials(email_or_name, password):
                     return None
             return result
         except Exception as e:
-            print(f"Error retrieving user: {str(e)}")
+            # Log an error message if there's an issue retrieving a user
+            logger.error(f"Error retrieving user: {str(e)}")
             return None
 
+# Function to retrieve all users from the 'users' table
 def get_all_users():
     with engine.connect() as connection:
         try:
@@ -49,13 +97,21 @@ def get_all_users():
             result = connection.execute(query).fetchall()
             return result
         except Exception as e:
-            print(f"Error retrieving users: {str(e)}")
+            # Log an error message if there's an issue retrieving all users
+            logger.error(f"Error retrieving users: {str(e)}")
             return None
 
+# Define the route for the home page
 @app.route('/')
 def home():
     return render_template('home.html')
 
+# Define a function to run before each request to check and initialize the 'users' table
+@app.before_request
+def check_first_request():
+    initialize_table()
+
+# Define the route for user registration
 @app.route('/register', methods=['POST', 'GET'])
 def register():
     if request.method == 'POST':
@@ -73,6 +129,7 @@ def register():
 
     return render_template('register.html')
 
+# Define the route for user login
 @app.route('/login', methods=['POST', 'GET'])
 def login():
     if request.method == 'POST':
@@ -82,9 +139,6 @@ def login():
         result = get_user_by_credentials(email_or_name, password)
 
         if result:
-            session['username'] = result[0][1]
-            session['email'] = result[0][2]
-            session['password'] = result[0][3]
             return redirect(url_for('profile'))
 
         flash('Login failed.', 'error')
@@ -93,6 +147,7 @@ def login():
     is_activated = session.pop('is_activated', False)
     return render_template('home.html', is_activated=is_activated)
 
+# Define the route for the user profile
 @app.route('/profile')
 def profile():
     result = get_all_users()

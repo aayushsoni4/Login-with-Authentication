@@ -12,7 +12,7 @@ To run this project, you will need the following dependencies:
 
 - Python 3.x
 - Flask
-- SQL-connector
+- SQLAlchemy
 
 ## Getting Started
 

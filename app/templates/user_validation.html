@@ -1,0 +1,26 @@
+{% include 'index.html' %}
+
+<div class="container-fluid">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-success alert-dismissible fade show custom-alert" role="alert">
+        {% for message in messages %}
+        <p class="mb-0">{{ message }}</p>
+        {% endfor %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <form class="mx-auto" id="otpValidationForm" action="/user_validation" method="POST">
+        <h4 class="text-center">OTP Validation</h4>
+        <div class="mb-3 mt-4">
+            <label for="exampleInputOTP">Enter OTP</label>
+            <input type="text" name="otp" class="form-control" placeholder="Enter the OTP received">
+        </div>
+        <button type="submit" class="btn btn-primary">Validate OTP</button>
+        <div class="mt-4 text-center">
+            Didn't receive the OTP? <a href="{{ url_for('resend_otp') }}">Resend OTP</a>
+        </div>
+    </form>
+</div>

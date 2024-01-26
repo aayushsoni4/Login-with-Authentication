@@ -1,8 +1,11 @@
 # Import necessary modules
 from flask import render_template, redirect, url_for, request, session, flash
 from sqlalchemy import create_engine, text
-import bcrypt
 from dotenv import load_dotenv
+from flask_mail import Mail, Message
+import bcrypt
+import pyotp
+import random
 import logging
 import os
 
@@ -17,12 +20,26 @@ app.secret_key = os.getenv('YOUR_SECRET_KEY')
 load_dotenv()
 
 # Configure Flask app with necessary environment variables
-app.config['SECRET_KEY'] = os.getenv('YOUR_SECRET_KEY')
-app.config['DB_USER'] = os.getenv('DB_USER')
-app.config['DB_PASSWORD'] = os.getenv('DB_PASSWORD')
-app.config['DB_HOST'] = os.getenv('DB_HOST')
-app.config['DB_PORT'] = os.getenv('DB_PORT')
-app.config['DB_DATABASE'] = os.getenv('DB_DATABASE')
+app.config.update(
+    SECRET_KEY=os.getenv('YOUR_SECRET_KEY'),
+    DB_USER=os.getenv('DB_USER'),
+    DB_PASSWORD=os.getenv('DB_PASSWORD'),
+    DB_HOST=os.getenv('DB_HOST'),
+    DB_PORT=os.getenv('DB_PORT'),
+    DB_DATABASE=os.getenv('DB_DATABASE'),
+    MAIL_SERVER=os.getenv('MAIL_SERVER'),
+    MAIL_PORT=int(os.getenv('MAIL_PORT')),
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+    MAIL_DEFAULT_SENDER=os.getenv('MAIL_DEFAULT_SENDER'),
+    MAIL_USE_TLS=True,
+    MAIL_USE_SSL=False,
+)
+
+# Initialize Flask-Mail
+mail = Mail(app)
+otp = pyotp.TOTP(os.getenv('otp_key'), interval=300)
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +77,7 @@ def initialize_table():
 # Function to add a new user to the 'users' table
 def add_user(username, email, password):
     if not username or not password:
+        logger.error("Invalid username or password provided.")
         return False
     with engine.connect() as connection:
         try:
@@ -101,10 +119,44 @@ def get_all_users():
             logger.error(f"Error retrieving users: {str(e)}")
             return None
 
+def activate_user(email):
+    with engine.connect() as connection:
+        try:
+            query = text("UPDATE users SET is_activated = 1 WHERE email = :email")
+            connection.execute(query, {"email": email})
+            connection.commit()
+            return True
+        except Exception as e:
+            # Log an error message if there's an issue activating a user
+            logger.error(f"Error activating user: {str(e)}")
+            return None
+
+def get_email(username):
+    with engine.connect() as connection:
+        try:
+            query = text("SELECT email FROM users WHERE username = :username")
+            email = connection.execute(query, {"username": username}).fetchone()
+            return email[0]
+        except Exception as e:
+            # Log an error message if there's an issue activating a user
+            logger.error(f"Email not found!: {str(e)}")
+            return None
+        
+def sendOTP(email):
+    totp_value = otp.now()
+    message = Message("Your OTP for Verification", recipients=[email])
+    message.body = f"Your OTP is: {totp_value}"
+    mail.send(message)
+
 # Define the route for the home page
 @app.route('/')
 def home():
-    return render_template('home.html')
+    user = session.get('user')
+    
+    if user is None:
+        return render_template('home.html')
+
+    return redirect(url_for('profile'))
 
 # Define a function to run before each request to check and initialize the 'users' table
 @app.before_request
@@ -121,13 +173,61 @@ def register():
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
         if add_user(username, email, hashed_password):
-            session['is_activated'] = True
-            return redirect(url_for('login'))
+            # Generate OTP and store it in session
+            session['email'] = email
+            # Send the email
+            sendOTP(email)
+            
+            return redirect(url_for('user_validation'))
         else:
             flash('Registration failed.', 'error')
             return redirect(url_for('register'))
 
     return render_template('register.html')
+
+@app.route('/user_validation', methods=['POST', 'GET'])
+def user_validation():
+
+    email = session.get('email')
+
+    if email is None:
+        flash('Error! Please register again.', 'error')
+        return redirect(url_for('register'))
+    
+    if request.method == 'POST':
+        user_otp = request.form.get('otp')
+
+        current_otp = otp.now()
+
+        if user_otp == current_otp:
+            if activate_user(email):
+                flash('Registration successful.', 'success')
+                session['user'] = email
+                session.pop('email', None)
+                return redirect(url_for('profile'))
+            else:
+                flash('Error!', 'error')
+                return redirect(url_for('user_validation'))
+        else:
+            flash('Invalid OTP.', 'error')
+            return redirect(url_for('user_validation'))
+
+    return render_template('user_validation.html')
+
+# Add a new route to handle the resend_otp functionality
+@app.route('/resend_otp', methods=['GET'])
+def resend_otp():
+    email = session.get('email')
+
+    if email is None:
+        flash('Error! Please register again.', 'error')
+        return redirect(url_for('register'))
+
+    # Send the new OTP
+    sendOTP(email)
+
+    flash('New OTP sent successfully.', 'info')
+    return redirect(url_for('user_validation'))
 
 # Define the route for user login
 @app.route('/login', methods=['POST', 'GET'])
@@ -139,17 +239,28 @@ def login():
         result = get_user_by_credentials(email_or_name, password)
 
         if result:
-            return redirect(url_for('profile'))
+            if result[0][4] == 1:
+                # Setting the user_id in session during login
+                session['user'] = email_or_name 
+                return redirect(url_for('profile'))
+            else:
+                session['email'] = get_email(email_or_name) if '@' not in email_or_name else email_or_name
+                sendOTP(session.get('email'))
+                flash('Account not activated. Please verify your email.', 'info')
+                return redirect(url_for('user_validation'))
 
         flash('Login failed.', 'error')
-        return redirect(url_for('home'))
+        return redirect(url_for('login'))
 
-    is_activated = session.pop('is_activated', False)
-    return render_template('home.html', is_activated=is_activated)
+    return render_template('login.html')
 
 # Define the route for the user profile
 @app.route('/profile')
 def profile():
+    user = session.get('user')
+    
+    if user is None:
+        return redirect(url_for('login'))
     result = get_all_users()
 
     if result:

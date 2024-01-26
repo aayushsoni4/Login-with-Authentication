@@ -1,10 +1,16 @@
-{% if is_activated %}
-<div class="alert alert-success alert-dismissible fade show custom-alert" role="alert">
-    <strong>Success!</strong> Your account has been activated. You can now login.
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endif %}
+{% include 'index.html' %}
+
 <div class="container-fluid">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-success alert-dismissible fade show custom-alert" role="alert">
+        {% for message in messages %}
+        <p class="mb-0">{{ message }}</p>
+        {% endfor %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% endwith %}
     <form class="mx-auto" id="loginForm" action="/login" method="post">
         <h4 class="text-center">Login</h4>
         <div class="mb-3 mt-4">

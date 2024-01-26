@@ -3,9 +3,8 @@ from flask import render_template, redirect, url_for, request, session, flash
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
-import bcrypt
+from flask_bcrypt import Bcrypt
 import pyotp
-import random
 import logging
 import os
 
@@ -20,6 +19,9 @@ app.secret_key = os.getenv("YOUR_SECRET_KEY")
 
 # Load environment variables from the .env file
 load_dotenv()
+
+# Initialize Flask-Bcrypt with the Flask app for password hashing
+bcrypt = Bcrypt(app)
 
 # Configure Flask app with necessary environment variables
 app.config.update(
@@ -303,7 +305,7 @@ def register():
         email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
-        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")
 
         if add_user(username, email, hashed_password):
             # Generate OTP and store it in session

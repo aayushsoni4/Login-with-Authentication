@@ -1,9 +1,9 @@
 # Import necessary modules
 from flask import render_template, redirect, url_for, request, session, flash
-from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
 from flask_bcrypt import Bcrypt
+from flask_sqlalchemy import SQLAlchemy
 import pyotp
 import logging
 import os
@@ -23,11 +23,8 @@ bcrypt = Bcrypt(app)
 # Configure Flask app with necessary environment variables
 app.config.update(
     SECRET_KEY=os.getenv("YOUR_SECRET_KEY"),
-    DB_USER=os.getenv("DB_USER"),
-    DB_PASSWORD=os.getenv("DB_PASSWORD"),
-    DB_HOST=os.getenv("DB_HOST"),
-    DB_PORT=os.getenv("DB_PORT"),
-    DB_DATABASE=os.getenv("DB_DATABASE"),
+    SQLALCHEMY_DATABASE_URI=f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_DATABASE')}",
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
     MAIL_SERVER=os.getenv("MAIL_SERVER"),
     MAIL_PORT=int(os.getenv("MAIL_PORT")),
     MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
@@ -37,7 +34,8 @@ app.config.update(
     MAIL_USE_SSL=False,
 )
 
-# Initialize Flask-Mail
+# Initialize Flask-SQLAlchemy
+db = SQLAlchemy(app)
 mail = Mail(app)
 otp = pyotp.TOTP(os.getenv("otp_key"), interval=300)
 
@@ -45,212 +43,125 @@ otp = pyotp.TOTP(os.getenv("otp_key"), interval=300)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create the SQLAlchemy engine using the configured database URI
-db_uri = f"mysql+mysqlconnector://{app.config['DB_USER']}:{app.config['DB_PASSWORD']}@{app.config['DB_HOST']}:{app.config['DB_PORT']}/{app.config['DB_DATABASE']}"
-app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
-engine = create_engine(db_uri)
 
-
-def create_table_if_not_exists():
-    """
-    Create the 'users' table if it doesn't exist.
-
-    This function uses the configured database connection to create the 'users' table
-    with specific columns if it does not already exist.
-
-    Returns:
-        None
-    """
-    with engine.connect() as connection:
-        try:
-            # SQL query to create the 'users' table
-            query = text(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    username VARCHAR(255) UNIQUE NOT NULL,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
-                    is_activated TINYINT DEFAULT 0
-                );
-            """
-            )
-            # Execute the query
-            connection.execute(query)
-        except Exception as e:
-            # Log an error message if there's an issue creating the table
-            logger.error(f"Error creating table: {str(e)}")
+# Define User model
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    is_activated = db.Column(db.Boolean, default=False)
 
 
 def initialize_table():
     """
     Initialize the 'users' table.
-
-    This function initializes the 'users' table by calling create_table_if_not_exists
-    if the first request has not been processed yet.
-
-    Returns:
-        None
     """
-    if not app.first_request_processed:
-        create_table_if_not_exists()
+    try:
+        db.create_all()
         app.first_request_processed = True
+        logger.info("Initialized 'users' table.")
+    except Exception as e:
+        logger.error(f"Error initializing 'users' table: {str(e)}")
 
 
 def add_user(username, email, password):
     """
     Add a new user to the 'users' table.
-
-    Args:
-        username (str): The username of the new user.
-        email (str): The email of the new user.
-        password (str): The hashed password of the new user.
-
-    Returns:
-        bool: True if the user is successfully added, False otherwise.
     """
     if not username or not password:
         logger.error("Invalid username or password provided.")
         return False
-    with engine.connect() as connection:
-        try:
-            # SQL query to insert a new user into the 'users' table
-            query = text(
-                "INSERT INTO users (username, email, password) VALUES (:username, :email, :password)"
-            )
-            # Execute the query with provided parameters
-            connection.execute(
-                query, {"username": username, "email": email, "password": password}
-            )
-            # Commit the changes to the database
-            connection.commit()
-            return True
-        except Exception as e:
-            # Log an error message if there's an issue adding a user
-            logger.error(f"Error adding user: {str(e)}")
-            return False
+
+    try:
+        user = User(username=username, email=email, password=password)
+        db.session.add(user)
+        db.session.commit()
+        logger.info(f"User '{username}' added to 'users' table.")
+        return True
+    except Exception as e:
+        logger.error(f"Error adding user to 'users' table: {str(e)}")
+        return False
 
 
 def get_user_by_credentials(email_or_name, password):
     """
     Retrieve a user by credentials from the 'users' table.
-
-    Args:
-        email_or_name (str): The email or username of the user.
-        password (str): The password of the user.
-
-    Returns:
-        list or None: A list of user records if credentials are valid, None otherwise.
     """
-    with engine.connect() as connection:
-        try:
-            # SQL query to retrieve a user by email or username
-            query = text(
-                "SELECT * FROM users WHERE (email = :input) OR (username = :input)"
-            )
-            # Execute the query with provided parameters
-            result = connection.execute(query, {"input": email_or_name}).fetchall()
-            if result:
-                # Check if the provided password matches the stored hashed password
-                if bcrypt.checkpw(
-                    password.encode("utf-8"), result[0][3].encode("utf-8")
-                ):
-                    return result
-                else:
-                    return None
-            return result
-        except Exception as e:
-            # Log an error message if there's an issue retrieving a user
-            logger.error(f"Error retrieving user: {str(e)}")
+    try:
+        user = User.query.filter(
+            (User.email == email_or_name) | (User.username == email_or_name)
+        ).first()
+
+        if user and bcrypt.checkpw(
+            password.encode("utf-8"), user.password.encode("utf-8")
+        ):
+            logger.info(f"User '{user.username}' retrieved from 'users' table.")
+            return user
+        else:
+            logger.warning("Invalid credentials provided.")
             return None
-
-
-def get_all_users():
-    """
-    Retrieve all users from the 'users' table.
-
-    Returns:
-        list or None: A list of user records, each represented as a tuple.
-                      Returns None if there's an issue retrieving users.
-    """
-    with engine.connect() as connection:
-        try:
-            # SQL query to retrieve all users from the 'users' table
-            query = text("SELECT * FROM users")
-            # Execute the query
-            result = connection.execute(query).fetchall()
-            return result
-        except Exception as e:
-            # Log an error message if there's an issue retrieving all users
-            logger.error(f"Error retrieving users: {str(e)}")
-            return None
+    except Exception as e:
+        logger.error(f"Error retrieving user from 'users' table: {str(e)}")
+        return None
 
 
 def activate_user(email):
     """
     Activate a user for the specified email.
-
-    Args:
-        email (str): The email associated with the user to be activated.
-
-    Returns:
-        bool or None: True if the user is successfully activated, None otherwise.
     """
-    with engine.connect() as connection:
-        try:
-            # SQL query to update the 'is_activated' column for a user
-            query = text("UPDATE users SET is_activated = 1 WHERE email = :email")
-            # Execute the query with provided parameters
-            connection.execute(query, {"email": email})
-            # Commit the changes to the database
-            connection.commit()
+    try:
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            user.is_activated = True
+            db.session.commit()
+            logger.info(f"User '{user.username}' activated in 'users' table.")
             return True
-        except Exception as e:
-            # Log an error message if there's an issue activating a user
-            logger.error(f"Error activating user: {str(e)}")
+        else:
+            logger.warning(f"User with email '{email}' not found.")
             return None
+    except Exception as e:
+        logger.error(f"Error activating user in 'users' table: {str(e)}")
+        return None
 
 
 def get_email(username):
     """
     Retrieve the email associated with the given username from the Database.
-
-    Args:
-        username (str): The username of the user.
-
-    Returns:
-        str or None: The email associated with the username.
-                     Returns None if the email is not found.
     """
-    with engine.connect() as connection:
-        try:
-            # SQL query to retrieve the email associated with a username
-            query = text("SELECT email FROM users WHERE username = :username")
-            # Execute the query with provided parameters
-            email = connection.execute(query, {"username": username}).fetchone()
-            return email[0]
-        except Exception as e:
-            # Log an error message if there's an issue retrieving the email
-            logger.error(f"Email not found!: {str(e)}")
+    try:
+        user = User.query.filter_by(username=username).first()
+
+        if user:
+            logger.info(f"Email for user '{username}' retrieved from 'users' table.")
+            return user.email
+        else:
+            logger.warning(f"User '{username}' not found in 'users' table.")
             return None
+    except Exception as e:
+        logger.error(f"Error retrieving email from 'users' table: {str(e)}")
+        return None
 
 
 def sendOTP(email):
     """
     Send a one-time password (OTP) for email verification.
 
-    Args:
-        email (str): The email to which the OTP will be sent.
-
     Returns:
-        None
+        bool: True if OTP is sent successfully, False otherwise.
     """
-    # Generate a new OTP
-    totp_value = otp.now()
-    # Create a message with the OTP and send it to the specified email
-    message = Message("Your OTP for Verification", recipients=[email])
-    message.body = f"Your OTP is: {totp_value}"
-    mail.send(message)
+    try:
+        totp_value = otp.now()
+        message = Message("Your OTP for Verification", recipients=[email])
+        message.body = f"Your OTP is: {totp_value}"
+        mail.send(message)
+        logger.info(f"OTP sent successfully to {email}.")
+        return True
+    except Exception as e:
+        logger.error(f"Error sending OTP to {email}: {str(e)}")
+        return False
 
 
 @app.route("/")
@@ -374,11 +285,18 @@ def resend_otp():
         flash("Error! Please register again.", "error")
         return redirect(url_for("register"))
 
-    # Send the new OTP
-    sendOTP(email)
-
-    flash("New OTP sent successfully.", "info")
-    return redirect(url_for("user_validation"))
+    # Attempt to resend the OTP
+    if sendOTP(email):
+        flash("New OTP sent successfully.", "info")
+        return redirect(url_for("user_validation"))
+    else:
+        flash("Error resending OTP. Please try again later.", "error")
+        # Delete the user from the database
+        user = User.query.filter_by(email=email).first()
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+        return redirect(url_for("register"))
 
 
 @app.route("/login", methods=["POST", "GET"])
@@ -435,7 +353,8 @@ def profile():
 
     if user is None:
         return redirect(url_for("login"))
-    result = get_all_users()
+
+    result = User.query.all()
 
     if result:
         return render_template("profile.html", result=result)

@@ -14,9 +14,6 @@ from app import app
 # Flag to track if the first request has been processed
 app.first_request_processed = False
 
-# Set the Flask app's secret key from environment variables
-app.secret_key = os.getenv("YOUR_SECRET_KEY")
-
 # Load environment variables from the .env file
 load_dotenv()
 

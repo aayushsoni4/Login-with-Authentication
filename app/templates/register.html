@@ -30,8 +30,8 @@
         </div>
 
         <div class="mb-3 mt-4">
-            <label for="exampleInputPassword1">Retype Password</label>
-            <input type="password" name="retypepassword" id="retypepassword" class="form-control"
+            <label for="exampleInputPassword1">Confirm Password</label>
+            <input type="password" name="confirmpassword" id="confirmpassword" class="form-control"
                 placeholder="Retype your password" oninput="validatePassword()">
             <p id="passwordMatchError" style="color: red; display: none;">Passwords do not match</p>
         </div>
@@ -46,14 +46,14 @@
     <script>
         function validatePassword() {
             var password = document.getElementById("password").value;
-            var retypepassword = document.getElementById("retypepassword").value;
+            var confirmpassword = document.getElementById("confirmpassword").value;
             var errorElement = document.getElementById("passwordMatchError");
             var actualSubmitButton = document.getElementById("actualsubmit");
             var dummySubmitButton = document.getElementById("dummysubmit");
             var email = document.getElementsByName("email")[0].value;
             var username = document.getElementsByName("username")[0].value;
 
-            if (password !== retypepassword || email.length === 0 || username.length === 0) {
+            if (password !== confirmpassword || email.length === 0 || username.length === 0) {
                 errorElement.style.display = "block";
                 dummySubmitButton.style.display = "block";
                 actualSubmitButton.style.display = "none";

@@ -58,12 +58,13 @@ def initialize_table():
     """
     Initialize the 'users' table.
     """
-    try:
-        db.create_all()
-        app.first_request_processed = True
-        logger.info("Initialized 'users' table.")
-    except Exception as e:
-        logger.error(f"Error initializing 'users' table: {str(e)}")
+    if not app.first_request_processed:
+        try:
+            db.create_all()
+            app.first_request_processed = True
+            logger.info("Initialized 'users' table.")
+        except Exception as e:
+            logger.error(f"Error initializing 'users' table: {str(e)}")
 
 
 def add_user(username, email, password):
@@ -94,9 +95,7 @@ def get_user_by_credentials(email_or_name, password):
             (User.email == email_or_name) | (User.username == email_or_name)
         ).first()
 
-        if user and bcrypt.checkpw(
-            password.encode("utf-8"), user.password.encode("utf-8")
-        ):
+        if user and bcrypt.check_password_hash(user.password, password):
             logger.info(f"User '{user.username}' retrieved from 'users' table.")
             return user
         else:
@@ -202,8 +201,8 @@ def register():
     """
     Define the route for user registration.
 
-    If the request method is POST, validate the registration form, add the user,
-    generate and send OTP, and redirect to the user_validation route.
+    If the request method is POST, validate the registration form, check for existing user,
+    add the user, generate and send OTP, and redirect to the user_validation route.
     If the request method is GET, render the registration page.
 
     Returns:
@@ -214,6 +213,13 @@ def register():
         username = request.form.get("username")
         password = request.form.get("password")
         hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")
+
+        # Check if user with the provided email already exists
+        existing_user = User.query.filter_by(email=email).first()
+
+        if existing_user:
+            flash("User with this email already exists. Please login.", "error")
+            return redirect(url_for("login"))
 
         if add_user(username, email, hashed_password):
             # Generate OTP and store it in session
@@ -311,23 +317,27 @@ def login():
     Returns:
         render_template or redirect: Render the login page or redirect to profile or user_validation.
     """
+
+    user = session.get("user")
+
+    if user:
+        return redirect(url_for("profile"))
+
     if request.method == "POST":
         email_or_name = request.form.get("username")
         password = request.form.get("password")
 
-        result = get_user_by_credentials(email_or_name, password)
+        user = get_user_by_credentials(email_or_name, password)
 
-        if result:
-            if result[0][4] == 1:
+        if user:
+            if user.is_activated:
                 # Setting the user_id in session during login
-                session["user"] = email_or_name
+                session[
+                    "user"
+                ] = user.username
                 return redirect(url_for("profile"))
             else:
-                session["email"] = (
-                    get_email(email_or_name)
-                    if "@" not in email_or_name
-                    else email_or_name
-                )
+                session["email"] = user.email
                 sendOTP(session.get("email"))
                 flash("Account not activated. Please verify your email.", "info")
                 return redirect(url_for("user_validation"))

@@ -168,31 +168,6 @@ def activate_user(email):
         return None
 
 
-def get_email(username):
-    """
-    Retrieve the email associated with the given username from the Database.
-
-    Args:
-        username (str): The username of the user.
-
-    Returns:
-        str or None: The email associated with the username, None if the user is not found.
-    """
-    try:
-        # Query the 'users' table to get the email for the given username
-        user = User.query.filter_by(username=username).first()
-
-        if user:
-            logger.info(f"Email for user '{username}' retrieved from 'users' table.")
-            return user.email
-        else:
-            logger.warning(f"User '{username}' not found in 'users' table.")
-            return None
-    except Exception as e:
-        logger.error(f"Error retrieving email from 'users' table: {e}")
-        return None
-
-
 def send_otp(email):
     """
     Send a one-time password (OTP) for email verification.
@@ -296,11 +271,11 @@ def register():
     Define the route for user registration.
 
     If the request method is POST, validate the registration form, check for an existing user,
-    add the user, generate and send OTP, and redirect to the user_validation route.
+    add the user, generate and send OTP, and redirect to the validate_user route.
     If the request method is GET, render the registration page.
 
     Returns:
-        render_template or redirect: Render the registration page or redirect to user_validation.
+        render_template or redirect: Render the registration page or redirect to validate_user.
     """
     # Handle POST request for user registration
     if request.method == "POST":
@@ -325,7 +300,7 @@ def register():
             # Send the email with OTP
             if send_otp(email):
                 flash("OTP sent successfully.", "info")
-                return redirect(url_for("user_validation"))
+                return redirect(url_for("validate_user"))
             else:
                 flash("Error sending OTP. Please try again later.", "error")
                 return redirect(url_for("register"))
@@ -337,8 +312,8 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/user_validation", methods=["POST", "GET"])
-def user_validation():
+@app.route("/validate_user", methods=["POST", "GET"])
+def validate_user():
     """
     Define the route for user validation.
 
@@ -360,13 +335,13 @@ def user_validation():
     # Handle POST request for OTP validation
     if request.method == "POST":
         # Retrieve the OTP entered by the user in the form
-        user_otp = request.form.get("otp")
+        otp_entered = request.form.get("otp")
 
         # Get the current OTP using the TOTP generator
         current_otp = otp.now()
 
         # Check if the entered OTP matches the current OTP
-        if user_otp == current_otp:
+        if otp_entered == current_otp:
             # If OTP is valid, activate the user and set the user in session
             if activate_user(email):
                 flash("Registration successful.", "success")
@@ -375,13 +350,13 @@ def user_validation():
                 return redirect(url_for("profile"))
             else:
                 flash("Error activating user.", "error")
-                return redirect(url_for("user_validation"))
+                return redirect(url_for("validate_user"))
         else:
             flash("Invalid OTP.", "error")
-            return redirect(url_for("user_validation"))
+            return redirect(url_for("validate_user"))
 
     # Render the user validation page for GET requests
-    return render_template("user_validation.html")
+    return render_template("validate_user.html")
 
 
 @app.route("/resend_otp", methods=["GET"])
@@ -390,10 +365,10 @@ def resend_otp():
     Define a route to handle the resend_otp functionality.
 
     Resend the OTP and flash a message indicating success.
-    Redirect to the user_validation route.
+    Redirect to the validate_user route.
 
     Returns:
-        redirect: Redirect to user_validation route.
+        redirect: Redirect to validate_user route.
     """
     # Retrieve the user's email from the session
     email = session.get("email")
@@ -406,7 +381,7 @@ def resend_otp():
     # Attempt to resend the OTP
     if send_otp(email):
         flash("New OTP sent successfully.", "info")
-        return redirect(url_for("user_validation"))
+        return redirect(url_for("validate_user"))
     else:
         flash("Error resending OTP. Please try again later.", "error")
 
@@ -426,11 +401,11 @@ def login():
     Define the route for user login.
 
     If the request method is POST, validate login credentials,
-    handle account activation, and redirect to profile or user_validation.
+    handle account activation, and redirect to profile or validate_user.
     If the request method is GET, render the login page.
 
     Returns:
-        render_template or redirect: Render the login page or redirect to profile or user_validation.
+        render_template or redirect: Render the login page or redirect to profile or validate_user.
     """
 
     # Check if the user is already logged in
@@ -457,7 +432,7 @@ def login():
                 session["email"] = user.email
                 send_otp(session.get("email"))
                 flash("Account not activated. Please verify your email.", "info")
-                return redirect(url_for("user_validation"))
+                return redirect(url_for("validate_user"))
 
         # Flash a message for a failed login attempt
         flash("Login failed. Please check your credentials.", "error")

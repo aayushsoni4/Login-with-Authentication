@@ -1,14 +1,15 @@
 # Import necessary modules
+import logging
+from datetime import datetime, timedelta, timezone
+import os
+import secrets
+
 from flask import render_template, redirect, url_for, request, session, flash
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta, timezone
 import pyotp
-import logging
-import secrets
-import os
 
 # Import the Flask app instance
 from app import app
@@ -80,7 +81,7 @@ def initialize_table():
             app.first_request_processed = True
             logger.info("Initialized 'users' table.")
         except Exception as e:
-            logger.error(f"Error initializing 'users' table: {str(e)}")
+            logger.error(f"Error initializing 'users' table: {e}")
 
 
 def add_user(username, email, password):
@@ -108,7 +109,7 @@ def add_user(username, email, password):
         logger.info(f"User '{username}' added to 'users' table.")
         return True
     except Exception as e:
-        logger.error(f"Error adding user to 'users' table: {str(e)}")
+        logger.error(f"Error adding user to 'users' table: {e}")
         return False
 
 
@@ -136,7 +137,7 @@ def get_user_by_credentials(email_or_name, password):
             logger.warning("Invalid credentials provided.")
             return None
     except Exception as e:
-        logger.error(f"Error retrieving user from 'users' table: {str(e)}")
+        logger.error(f"Error retrieving user from 'users' table: {e}")
         return None
 
 
@@ -148,7 +149,7 @@ def activate_user(email):
         email (str): The email of the user to be activated.
 
     Returns:
-        bool or None: True if user is activated, None if user not found.
+        bool or None: True if the user is activated, None if the user is not found.
     """
     try:
         # Query the 'users' table and activate the user
@@ -163,7 +164,7 @@ def activate_user(email):
             logger.warning(f"User with email '{email}' not found.")
             return None
     except Exception as e:
-        logger.error(f"Error activating user in 'users' table: {str(e)}")
+        logger.error(f"Error activating user in 'users' table: {e}")
         return None
 
 
@@ -175,7 +176,7 @@ def get_email(username):
         username (str): The username of the user.
 
     Returns:
-        str or None: The email associated with the username, None if user not found.
+        str or None: The email associated with the username, None if the user is not found.
     """
     try:
         # Query the 'users' table to get the email for the given username
@@ -188,11 +189,11 @@ def get_email(username):
             logger.warning(f"User '{username}' not found in 'users' table.")
             return None
     except Exception as e:
-        logger.error(f"Error retrieving email from 'users' table: {str(e)}")
+        logger.error(f"Error retrieving email from 'users' table: {e}")
         return None
 
 
-def sendOTP(email):
+def send_otp(email):
     """
     Send a one-time password (OTP) for email verification.
 
@@ -200,7 +201,7 @@ def sendOTP(email):
         email (str): The email address to which the OTP will be sent.
 
     Returns:
-        bool: True if OTP is sent successfully, False otherwise.
+        bool: True if the OTP is sent successfully, False otherwise.
     """
     try:
         # Generate a one-time password (OTP)
@@ -211,7 +212,7 @@ def sendOTP(email):
         logger.info(f"OTP sent successfully to {email}.")
         return True
     except Exception as e:
-        logger.error(f"Error sending OTP to {email}: {str(e)}")
+        logger.error(f"Error sending OTP to {email}: {e}")
         return False
 
 
@@ -252,7 +253,7 @@ def send_password_reset_email(email, token):
         logger.info(f"Password reset email sent successfully to {email}.")
         return True
     except Exception as e:
-        logger.error(f"Error sending password reset email to {email}: {str(e)}")
+        logger.error(f"Error sending password reset email to {email}: {e}")
         return False
 
 
@@ -322,7 +323,7 @@ def register():
             session["email"] = email
 
             # Send the email with OTP
-            if sendOTP(email):
+            if send_otp(email):
                 flash("OTP sent successfully.", "info")
                 return redirect(url_for("user_validation"))
             else:
@@ -403,7 +404,7 @@ def resend_otp():
         return redirect(url_for("register"))
 
     # Attempt to resend the OTP
-    if sendOTP(email):
+    if send_otp(email):
         flash("New OTP sent successfully.", "info")
         return redirect(url_for("user_validation"))
     else:
@@ -454,11 +455,11 @@ def login():
             else:
                 # If the account is not activated, send OTP for validation
                 session["email"] = user.email
-                sendOTP(session.get("email"))
+                send_otp(session.get("email"))
                 flash("Account not activated. Please verify your email.", "info")
                 return redirect(url_for("user_validation"))
 
-        # Flash a message for failed login attempt
+        # Flash a message for a failed login attempt
         flash("Login failed. Please check your credentials.", "error")
         return redirect(url_for("login"))
 

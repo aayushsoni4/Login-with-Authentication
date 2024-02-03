@@ -4,7 +4,7 @@
     {% include 'index.html' %}
     {% with messages = get_flashed_messages() %}
     {% if messages %}
-    <div class="alert alert-success alert-dismissible fade show custom-alert" role="alert">
+    <div class="alert alert-success alert-dismissible fade show custom-alert text-center" role="alert">
         {% for message in messages %}
         <p class="mb-0">{{ message }}</p>
         {% endfor %}

@@ -557,12 +557,38 @@ def reset_password(token):
     return redirect(url_for("forgot_password"))
 
 
+@app.route("/logout", methods=["POST"])
+def logout():
+    """
+    Define the route for user logout.
+
+    If the request method is POST, clear the user session and redirect to the home page.
+
+    Returns:
+        redirect: Redirect to the home page after logout.
+    """
+    # Check if the user is logged in
+    user = session.get("user")
+
+    if user is None:
+        # User is not logged in, no need to log out, redirect to home
+        flash("You are not logged in.", "info")
+        return redirect(url_for("home"))
+
+    # Clear the user session
+    session.pop("user", None)
+
+    # Flash a success message and redirect to the home page
+    flash("Logout successful. You have been logged out.", "success")
+    return redirect(url_for("home"))
+
+
 @app.route("/profile")
 def profile():
     """
     Define the route for the user profile.
 
-    If the user is not logged in, redirect to the login page.
+    If the user is not logged in, flash a message and redirect to the login page.
     If the user is logged in, retrieve all users and render the profile page.
 
     Returns:
@@ -572,7 +598,8 @@ def profile():
     user = session.get("user")
 
     if user is None:
-        # Redirect to the login page if the user is not logged in
+        # Flash a message and redirect to the login page if the user is not logged in
+        flash("Please log in to access the profile page.", "info")
         return redirect(url_for("login"))
 
     # Retrieve all users from the database

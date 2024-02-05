@@ -13,7 +13,7 @@
     {% endif %}
     {% endwith %}
 
-    <form class="mx-auto" id="otpValidationForm" action="/validate_user" method="POST">
+    <form class="mx-auto" id="otpValidationForm" action="{{ url_for('auth.validate_user') }}" method="POST">
         <h4 class="text-center">OTP Validation</h4>
         <div class="mb-3 mt-4">
             <label for="exampleInputOTP">Enter OTP</label>
@@ -21,7 +21,7 @@
         </div>
         <button type="submit" class="btn btn-primary">Validate OTP</button>
         <div class="mt-4 text-center">
-            Didn't receive the OTP? <a href="{{ url_for('resend_otp') }}">Resend OTP</a>
+            Didn't receive the OTP? <a href="{{ url_for('auth.resend_otp') }}">Resend OTP</a>
         </div>
     </form>
 </div>

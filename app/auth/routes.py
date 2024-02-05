@@ -156,7 +156,6 @@ def validate_user():
         if otp_entered == current_otp:
             # If OTP is valid, activate the user and set the user in session
             if activate_user(email):
-                flash("Registration successful.", "success")
                 session["user"] = email
                 session.pop("email", None)  # Remove the email from session
                 return redirect(url_for("main.profile"))

@@ -8,14 +8,11 @@ from flask import render_template, redirect, url_for, request, session, flash
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
 from flask_bcrypt import Bcrypt
-from flask_sqlalchemy import SQLAlchemy
 import pyotp
 
 # Import the Flask app instance
-from app import app
-
-# Flag to track if the first request has been processed
-app.first_request_processed = False
+from app import app, db, mail
+from app.models import User
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -23,65 +20,12 @@ load_dotenv()
 # Initialize Flask-Bcrypt with the Flask app for password hashing
 bcrypt = Bcrypt(app)
 
-# Configure Flask app with necessary environment variables
-app.config.update(
-    SECRET_KEY=os.getenv("YOUR_SECRET_KEY"),
-    SQLALCHEMY_DATABASE_URI=f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_DATABASE')}",
-    SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT")),
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER"),
-    MAIL_USE_TLS=True,
-    MAIL_USE_SSL=False,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=1),
-)
-
-# Initialize Flask-SQLAlchemy
-db = SQLAlchemy(app)
-mail = Mail(app)
+# Initialize the TOTP generator with the OTP key from the environment variables
 otp = pyotp.TOTP(os.getenv("otp_key"), interval=300)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# Define User model
-class User(db.Model):
-    """
-    User model representing the 'users' table in the database.
-
-    Attributes:
-        id (int): Primary key for the User model.
-        username (str): User's username, unique and not nullable.
-        email (str): User's email, unique and not nullable.
-        password (str): User's password, not nullable.
-        is_activated (bool): Flag indicating whether the user is activated, default is False.
-    """
-
-    __tablename__ = "users"
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(255), unique=True, nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-    is_activated = db.Column(db.Boolean, default=False)
-
-
-def initialize_table():
-    """
-    Initialize the 'users' table.
-    """
-    # Check if the first request has been processed to avoid repeated table creation
-    if not app.first_request_processed:
-        try:
-            # Create the 'users' table
-            db.create_all()
-            app.first_request_processed = True
-            logger.info("Initialized 'users' table.")
-        except Exception as e:
-            logger.error(f"Error initializing 'users' table: {e}")
 
 
 def add_user(username, email, password):
@@ -249,20 +193,6 @@ def home():
         return render_template("home.html")
 
     return redirect(url_for("profile"))
-
-
-@app.before_request
-def check_first_request():
-    """
-    Define a function to run before each request to check and initialize the 'users' table.
-
-    This function calls initialize_table to check and initialize the 'users' table
-    before processing each request.
-
-    Returns:
-        None
-    """
-    initialize_table()
 
 
 @app.route("/register", methods=["POST", "GET"])

@@ -41,6 +41,7 @@ Ensure the following dependencies are installed before running the project:
 
 - Python 3.x
 - Flask
+- Flask-Login
 - SQLAlchemy
 - python-dotenv
 

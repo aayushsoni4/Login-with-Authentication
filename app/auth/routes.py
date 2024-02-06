@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session, flash
+from flask import render_template, redirect, url_for, request, session, flash, abort
+from flask_login import current_user, login_user, logout_user, login_required
 from app import db, bcrypt
 from app.models import User
 from app.utils import (
@@ -28,9 +29,7 @@ def login():
         render_template or redirect: Render login page or redirect to profile or validate_user.
     """
     # Check if the user is already logged in
-    user = session.get("user")
-
-    if user:
+    if current_user.is_authenticated:
         return redirect(url_for("main.profile"))
 
     # Process POST request for login
@@ -43,8 +42,7 @@ def login():
 
         if user:
             if user.is_activated:
-                # Set the user_id in session during login
-                session["user"] = user.username
+                login_user(user)
                 return redirect(url_for("main.profile"))
             else:
                 # If the account is not activated, send OTP for validation
@@ -76,9 +74,7 @@ def register():
     """
 
     # Check if the user is already logged in
-    user = session.get("user")
-
-    if user:
+    if current_user.is_authenticated:
         return redirect(url_for("main.profile"))
 
     # Handle POST request for user registration
@@ -131,23 +127,15 @@ def validate_user():
     """
 
     # Check if the user is already logged in
-    user = session.get("user")
-
-    if user:
+    if current_user.is_authenticated:
         return redirect(url_for("main.profile"))
-
-    # Retrieve the email from the session
-    email = session.get("email")
-
-    # Check if the email is not present in the session (error condition)
-    if email is None:
-        flash("Error! Please register again.", "error")
-        return redirect(url_for("auth.register"))
 
     # Handle POST request for OTP validation
     if request.method == "POST":
         # Retrieve the OTP entered by the user in the form
         otp_entered = request.form.get("otp")
+        # Retrieve email from session
+        email = session.get("email")
 
         # Get the current OTP using the TOTP generator
         current_otp = otp.now()
@@ -156,8 +144,10 @@ def validate_user():
         if otp_entered == current_otp:
             # If OTP is valid, activate the user and set the user in session
             if activate_user(email):
-                session["user"] = email
-                session.pop("email", None)  # Remove the email from session
+                user = User.query.filter_by(email=email).first()
+                login_user(user)
+                # Remove the email from session
+                session.pop("email", None)
                 return redirect(url_for("main.profile"))
             else:
                 flash("Error activating user.", "error")
@@ -184,9 +174,7 @@ def resend_otp():
     """
 
     # Check if the user is already logged in
-    user = session.get("user")
-
-    if user:
+    if current_user.is_authenticated:
         return redirect(url_for("main.profile"))
 
     # Retrieve the user's email from the session
@@ -215,30 +203,32 @@ def resend_otp():
 
 
 # Define the route for user logout
-@auth_bp.route("/logout", methods=["POST"])
+@auth_bp.route("/logout", methods=["POST", "GET"])
 def logout():
     """
     Handle user logout.
 
     If POST, clear the user session and redirect to the home page.
+    If GET and the user is logged in, redirect to the profile page.
+    If GET and the user is not logged in, redirect to the login page.
 
     Returns:
-        redirect: Redirect to the home page after logout.
+        redirect: Redirect to the home page after logout (POST), profile page (GET if logged in),
+                  or login page (GET if not logged in).
     """
-    # Check if the user is logged in
-    user = session.get("user")
-
-    if user is None:
-        # User is not logged in, no need to log out, redirect to home
-        flash("You are not logged in.", "info")
+    # If the request method is POST, logout the user
+    if request.method == "POST":
+        # Logout the user using Flask-Login
+        logout_user()
+        flash("Logout successful. You have been logged out.", "success")
         return redirect(url_for("main.home"))
 
-    # Clear the user session
-    session.pop("user", None)
+    # If the user is logged in, redirect to the profile page
+    if current_user.is_authenticated:
+        return redirect(url_for("main.profile"))
 
-    # Flash a success message and redirect to the home page
-    flash("Logout successful. You have been logged out.", "success")
-    return redirect(url_for("main.home"))
+    # If the user is not logged in, redirect to the login page
+    return redirect(url_for("auth.login"))
 
 
 # Define the route for handling password reset requests
@@ -256,9 +246,7 @@ def forgot_password():
         render_template or redirect: Render the forgot password page or redirect to login.
     """
     # Check if the user is already logged in
-    user = session.get("user")
-
-    if user:
+    if current_user.is_authenticated:
         return redirect(url_for("main.profile"))
 
     # Process POST request for password reset

@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, session, flash
+from flask import render_template, redirect, url_for, session, flash
+from flask_login import current_user, login_required
 from app.models import User
 from . import main_bp
 
@@ -15,34 +16,24 @@ def home():
     Returns:
         render_template or redirect: Render the home page or redirect to the profile page.
     """
-    user = session.get("user")
-
-    if user is None:
-        return render_template("home.html")
-
-    return redirect(url_for("main.profile"))
+    if current_user.is_authenticated:
+        return redirect(url_for("main.profile"))
+    return render_template("home.html")
 
 
 # Define the route for the user profile
 @main_bp.route("/profile")
+@login_required
 def profile():
     """
     Handle the user profile route.
 
-    If the user is not logged in, flash a message and redirect to the login page.
+    If the user is not logged in, Flask-Login will automatically redirect them to the login page.
     If the user is logged in, retrieve all users and render the profile page.
 
     Returns:
         redirect or render_template: Redirect to login or render the profile page.
     """
-    # Check if the user is logged in
-    user = session.get("user")
-
-    if user is None:
-        # Flash a message and redirect to the login page if the user is not logged in
-        flash("Please log in to access the profile page.", "info")
-        return redirect(url_for("auth.login"))
-
     # Retrieve all users from the database
     result = User.query.all()
 

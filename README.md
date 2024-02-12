@@ -1,8 +1,8 @@
-# Flask Login System with Authentication
+# Flask Login System with Authentication - Project Setup
 
-## Introduction
+Welcome to the Flask Login System with Authentication project!
 
-This Flask web application serves as a comprehensive solution for implementing user authentication, offering functionalities for user registration, login, and logout. The goal is to provide a secure and organized structure for handling user interactions.
+This Flask web application serves as a comprehensive solution for implementing user authentication, offering functionalities for user registration, login, and logout.
 
 ## Project Overview
 
@@ -22,6 +22,7 @@ This Flask web application serves as a comprehensive solution for implementing u
   - Connected the Flask application to a local SQL database using tools like SQLWorkbench or XAMPP SQL.
   - Utilized SQLAlchemy to integrate the database for storing user information securely.
   - Defined a `User` model to manage user data and relationships.
+  - Introduced an `Image` model to store and display images uploaded by users.
 
 - **Environment Configuration:**
   - Utilized `python-dotenv` to load environment variables from a `.env` file.

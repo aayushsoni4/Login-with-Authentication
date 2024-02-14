@@ -11,36 +11,36 @@
     </div>
     {% endif %}
     {% endwith %}
+    <h1 class="display-4 text-dark mb-4">Welcome, {{ current_user.username }}</h1>
     <div class="row">
         <div class="col-md-8">
-            <h1>Welcome, {{ current_user.username }}</h1>
             <!-- Form for uploading image -->
-            <div class="mx-auto">
-                <form action="{{ url_for('main.upload_image') }}" method="post" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="image">Upload Image:</label>
-                        <input type="file" class="form-control-file" id="image" name="image"
-                            onchange="updateFileName(this)">
-                        <p id="file-name" class="mt-2 text-muted">No file chosen</p>
+            <div class="d-flex justify-content-center align-items-center">
+                <form action="{{ url_for('main.upload_image') }}" method="post" enctype="multipart/form-data"
+                    class="w-75">
+                    <div class="form-group text-center">
+                        <label for="image" class="text-muted fs-5">Upload Image</label>
+                        <input type="file" class="form-control-file text-black-50 mt-2" id="image" name="image">
                     </div>
-                    <button type="submit" class="btn btn-primary">Upload</button>
+                    <button type="submit" class="btn btn-primary mt-3">Upload</button>
                 </form>
             </div>
             <!-- Display user's images if available -->
             {% if user_images %}
-            <div class="image-container">
+            <div class="image-container mt-4">
                 {% for image in user_images %}
-                <img src="{{ url_for('main.get_image', image_id=image.id) }}" alt="{{ image.filename }}">
+                <img src="{{ url_for('main.get_image', image_id=image.id) }}" alt="{{ image.filename }}"
+                    class="img-fluid rounded" style="width: 350px; height: 200px; object-fit: cover;">
                 {% endfor %}
             </div>
             {% else %}
-            <p>No images uploaded for the current user.</p>
+            <p class="mt-4">No images uploaded for the current user.</p>
             {% endif %}
         </div>
         <div class="col-md-4">
             <form class="mx-auto" id="logoutForm" action="{{ url_for('auth.logout') }}" method="post">
-                <h4 class="text-center">Logout</h4>
-                <button type="submit" class="btn btn-primary">Logout</button>
+                <h4 class="text-center text-muted fs-10">Logout</h4>
+                <button type="submit" class="btn btn-primary mt-3">Logout</button>
             </form>
         </div>
     </div>
@@ -50,25 +50,12 @@
     .image-container {
         display: flex;
         flex-wrap: wrap;
-        /* Allow images to wrap to the next line if needed */
         justify-content: center;
-        /* Center images horizontally */
         margin-top: 20px;
-        /* Adjust margin as needed */
     }
 
     .image-container img {
         margin-right: 10px;
-        /* Adjust spacing between images */
         margin-bottom: 10px;
-        /* Adjust spacing between rows of images */
     }
 </style>
-
-<script>
-    function updateFileName(input) {
-        var fileName = input.files[0].name;
-        var fileNameElement = document.getElementById("file-name");
-        fileNameElement.innerText = fileName;
-    }
-</script>

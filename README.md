@@ -1,8 +1,8 @@
-# Flask Login System with Authentication - Project Setup
+# Flask Login System with Authentication
 
-Welcome to the Flask Login System with Authentication project!
+## Introduction
 
-This Flask web application serves as a comprehensive solution for implementing user authentication, offering functionalities for user registration, login, and logout.
+This Flask web application serves as a comprehensive solution for implementing user authentication, offering functionalities for user registration, login, and logout. The goal is to provide a secure and organized structure for handling user interactions.
 
 ## Project Overview
 
@@ -22,7 +22,6 @@ This Flask web application serves as a comprehensive solution for implementing u
   - Connected the Flask application to a local SQL database using tools like SQLWorkbench or XAMPP SQL.
   - Utilized SQLAlchemy to integrate the database for storing user information securely.
   - Defined a `User` model to manage user data and relationships.
-  - Introduced an `Image` model to store and display images uploaded by users.
 
 - **Environment Configuration:**
   - Utilized `python-dotenv` to load environment variables from a `.env` file.
@@ -110,6 +109,29 @@ Follow these steps to set up and run the project:
 ## Usage
 
 This project provides an excellent starting point for building Flask applications with robust user authentication. Developers can explore the codebase, leverage the implemented features, and customize it according to specific requirements.
+
+## Video Demonstration
+
+[Watch the video demonstration](media/videos/demo.mp4)
+
+*Caption: Watch the video demonstration of our Flask application showcasing its features and functionalities.*
+
+## Screenshots
+
+### Login Page
+![Login Page](media/screenshots/login_page.png)
+
+*Caption: Screenshot of the login page where users can enter their credentials to log in.*
+
+### Registration Page
+![Registration Page](media/screenshots/registration_page.png)
+
+*Caption: Screenshot of the registration page where users can create a new account.*
+
+### Profile Page
+![Profile Page](media/screenshots/profile_page.png)
+
+*Caption: Screenshot of the profile page displaying user information and uploaded images.*
 
 ## Support and Feedback
 

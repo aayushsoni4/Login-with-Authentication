@@ -112,7 +112,10 @@ This project provides an excellent starting point for building Flask application
 
 ## Video Demonstration
 
-[Watch the video demonstration](media/videos/demo.mp4)
+<video width="100%" controls>
+  <source src="media/videos/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 *Caption: Watch the video demonstration of our Flask application showcasing its features and functionalities.*
 

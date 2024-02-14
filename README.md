@@ -112,7 +112,7 @@ This project provides an excellent starting point for building Flask application
 
 ## Video Demonstration
 
-[Watch the video demonstration](media/videos/demo.mp4)
+[Watch the video demonstration](media/videos/demo.gif)
 
 *Caption: Watch the video demonstration of our Flask application showcasing its features and functionalities.*
 

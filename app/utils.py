@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import secrets
-from flask_mail import Mail, Message
+from flask_mail import Message
 from flask import url_for
 
 # Import Flask app instance, database, and User model

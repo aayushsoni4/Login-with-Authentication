@@ -1,6 +1,6 @@
 from app import db
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class User(UserMixin, db.Model):
@@ -57,4 +57,4 @@ class Image(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     data = db.Column(db.LargeBinary(length=(2**32) - 1), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))

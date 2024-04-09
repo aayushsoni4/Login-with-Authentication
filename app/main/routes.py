@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 from app import db
 from app.models import Image
-from datetime import datetime
+from datetime import datetime, timezone
 
 from io import BytesIO
 from flask import send_file
@@ -75,7 +75,7 @@ def upload_image():
             filename=filename,
             data=image_data,
             user_id=current_user.id,
-            uploaded_at=datetime.utcnow(),
+            uploaded_at=datetime.now(timezone.utc),
         )
         db.session.add(new_image)
         db.session.commit()

@@ -264,7 +264,7 @@ def forgot_password():
 
             # Store the token and user information (e.g., user ID) in a secure way
             session["reset_token"] = token
-            session["reset_token_expiration"] = datetime.now() + timedelta(
+            session["reset_token_expiration"] = datetime.now(timezone.utc) + timedelta(
                 minutes=15
             )
             session["user_id_to_reset"] = user.id
@@ -312,7 +312,7 @@ def reset_password(token):
         # Check if the token has expired
         if (
             expiration_timestamp
-            and datetime.now().replace(tzinfo=timezone.utc) > expiration_timestamp
+            and datetime.now(timezone.utc).replace(tzinfo=timezone.utc) > expiration_timestamp
         ):
             flash("Token has expired. Please request a new password reset.", "error")
             return redirect(url_for("auth.forgot_password"))
